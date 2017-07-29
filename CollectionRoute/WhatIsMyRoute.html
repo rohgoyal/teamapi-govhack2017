@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Waypoints in directions</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.16.min.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        //Function to find and capture only Unique Arrays
+        function onlyUnique(value, index, self) { 
+            return self.indexOf(value) === index;
+        }
+
+        //AWS Config to Connect to DynamoDb
+        AWS.config.update({
+              accessKeyId: "AKIAIKJ5U4364I6UATCA",
+              secretAccessKey: "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",
+              region: 'us-east-1'
+          });
+        
+          //Connect to DynamoDb         
+            var db = new AWS.DynamoDB();
+            db.listTables(function (err, data) {
+              console.log(err);
+              console.log(data.TableNames);
+              //$('body').append(data.TableNames);     
+            });
+
+          //When user choose the drop down date menu  
+          $('#collectionDate').click(function () {
+            var params = {
+                TableName: 'booking',
+                FilterExpression: '#collectionDate = :collectionDateVal',
+                ExpressionAttributeNames: {
+                   "#collectionDate": "collectionDate"
+                },
+                ExpressionAttributeValues: {
+                    ":collectionDateVal": {"S":"2017-08-22"}
+                }
+              
+            };
+            var vArray = [];  
+            var dynamodb = new AWS.DynamoDB();
+
+            //Scan DynamoDb
+            dynamodb.scan(params, function(err, data) {
+              if 
+                (err) console.log(err, err.stack); 
+              else{ 
+                console.log(JSON.stringify(data));         
+                for (var i = 0; i < data.Items.length ; i++){
+                  var obj = data.Items[i];
+                  console.log(obj.streetAddress.S + ", " +  obj.suburb.S);
+                  vArray.push(obj.streetAddress.S + ", " +  obj.suburb.S);
+                }
+                console.log(vArray);
+                
+                //To avoid errors, make sure the we consider only unique addresses
+                var uniqueVArray = vArray.filter( onlyUnique ); 
+                console.log(uniqueVArray);
+
+                //Add in return addresses in list
+                for (var i = 0; i < uniqueVArray.length ; i++){
+                  var opt = document.createElement('option');
+                  opt.value = uniqueVArray[i];
+                  opt.selected = "true";
+                  opt.innerHTML = uniqueVArray[i];
+                  $('#waypoints').append(opt);
+                }
+              }
+            });  
+        });
+      });
+    </script>
+    <style>
+      #right-panel {
+        font-family: 'Roboto','sans-serif';
+        line-height: 30px;
+        padding-left: 10px;
+      }
+
+      #right-panel select, #right-panel input {
+        font-size: 15px;
+      }
+
+      #right-panel select {
+        width: 100%;
+      }
+
+      #right-panel i {
+        font-size: 12px;
+      }
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+        float: left;
+        width: 70%;
+        height: 100%;
+      }
+      #right-panel {
+        margin: 20px;
+        border-width: 2px;
+        width: 20%;
+        height: 400px;
+        float: left;
+        text-align: left;
+        padding-top: 0;
+      }
+      #directions-panel {
+        margin-top: 10px;
+        background-color: #FFEE77;
+        padding: 10px;
+        overflow: scroll;
+        height: 174px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="right-panel">
+    <div>
+    <b>CollectionDate:</b>
+    <select id="collectionDate">
+      <option value="2017-08-15">15 August 2017</option>
+      <option value="2017-08-22">22 August 2017</option>
+    </select>
+    </div>
+    <div>
+    <b>Start:</b>
+    <select id="start">
+      <option value="45 Princes Hwy, Werribee VIC 3030">Wyndham Civic Centre</option>
+    </select>
+    <br>
+    <b>Waypoints:</b> <br>
+    <i>(Ctrl+Click or Cmd+Click for multiple selection)</i> <br>
+    <select multiple id="waypoints">
+      
+    </select>
+    <br>
+    <b>End:</b>
+    <select id="end">
+      <option value="470 Wests Road, Werribee VIC 3030">Refuse Disposal Facility</option>
+    </select>
+    <br>
+      <input type="submit" id="submit">
+    </div>
+    <div id="directions-panel"></div>
+    </div>
+    <script>
+      function initMap() {
+        var directionsService = new google.maps.DirectionsService;
+        var directionsDisplay = new google.maps.DirectionsRenderer;
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 11,
+          center: {lat: -37.8973537, lng: 144.5303753}
+        });
+        directionsDisplay.setMap(map);
+
+        document.getElementById('submit').addEventListener('click', function() {
+          calculateAndDisplayRoute(directionsService, directionsDisplay);
+        });
+      }
+
+      function calculateAndDisplayRoute(directionsService, directionsDisplay) {
+        var waypts = [];
+        var checkboxArray = document.getElementById('waypoints');
+        for (var i = 0; i < checkboxArray.length; i++) {
+          if (checkboxArray.options[i].selected) {
+            waypts.push({
+              location: checkboxArray[i].value,
+              stopover: true
+            });
+          }
+        }
+
+        directionsService.route({
+          origin: document.getElementById('start').value,
+          destination: document.getElementById('end').value,
+          waypoints: waypts,
+          optimizeWaypoints: true,
+          travelMode: 'DRIVING'
+        }, function(response, status) {
+          if (status === 'OK') {
+            directionsDisplay.setDirections(response);
+            var route = response.routes[0];
+            var summaryPanel = document.getElementById('directions-panel');
+            summaryPanel.innerHTML = '';
+            // For each route, display summary information.
+            for (var i = 0; i < route.legs.length; i++) {
+              var routeSegment = i + 1;
+              summaryPanel.innerHTML += '<b>Route Segment: ' + routeSegment +
+                  '</b><br>';
+              summaryPanel.innerHTML += route.legs[i].start_address + ' to ';
+              summaryPanel.innerHTML += route.legs[i].end_address + '<br>';
+              summaryPanel.innerHTML += route.legs[i].distance.text + '<br><br>';
+            }
+          } else {
+            window.alert('Directions request failed due to ' + status);
+          }
+        });
+      }
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDWGfN5TlcTHuKk-befq_tqhzilyHmEoZM&callback=initMap">
+    </script>
+  </body>
+</html>
