@@ -13,6 +13,16 @@
             return self.indexOf(value) === index;
         }
 
+        function getLocation(address) {
+          var url = "https://maps.googleapis.com/maps/api/geocode/json?address=" + address + "key=AIzaSyAEygzKZnFlSNxjamtGBGI9roGXnfiDKGY";
+          console.log(url);
+          $.getJSON(url,function (data, textStatus) {
+            console.log(data.status);
+            //var streetaddress=data.results[0].formatted_address;
+            return data.status;
+          });
+        }
+
         //AWS Config to Connect to DynamoDb
         AWS.config.update({
               accessKeyId: "AKIAIKJ5U4364I6UATCA",
@@ -62,12 +72,24 @@
                 console.log(uniqueVArray);
 
                 //Add in return addresses in list
-                for (var i = 0; i < uniqueVArray.length ; i++){
-                  var opt = document.createElement('option');
-                  opt.value = uniqueVArray[i];
-                  opt.selected = "true";
-                  opt.innerHTML = uniqueVArray[i];
-                  $('#waypoints').append(opt);
+                var i = 0;
+                for (; i < uniqueVArray.length ; i++){
+                  //Check if the address is Valid
+                  var url = "https://maps.googleapis.com/maps/api/geocode/json?address=" + uniqueVArray[i] + "&key=AIzaSyAEygzKZnFlSNxjamtGBGI9roGXnfiDKGY";
+                  console.log(url);
+                  $.getJSON(url,function (data, textStatus) {
+                    //console.log(uniqueVArray[i]);
+                    //console.log(data.status);
+                    //var streetaddress=data.results[0].formatted_address;
+                    //return data.status;
+                    if(data.status == "OK"){
+                      var opt = document.createElement('option');
+                      opt.value = data.results[0].formatted_address;
+                      opt.selected = "true";
+                      opt.innerHTML = data.results[0].formatted_address;
+                      $('#waypoints').append(opt);
+                    }
+                  }); 
                 }
               }
             });  
