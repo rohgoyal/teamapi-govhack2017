@@ -8,6 +8,22 @@
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.16.min.js"></script>
     <script type="text/javascript">
       $(document).ready(function() {
+        //Populate collectionDate fields
+        for(var i = 1 ; i <= 9 ; i++){
+          var opt = document.createElement('option');
+          opt.value = "2017-09-0"+i;
+          opt.selected = "true";
+          opt.innerHTML = i + " September, 2017";
+          $('#collectionDate').append(opt);
+        }
+        for(var i = 10 ; i < 31 ; i++){
+          var opt = document.createElement('option');
+          opt.value = "2017-09-"+i;
+          opt.selected = "true";
+          opt.innerHTML = i + " September, 2017";
+          $('#collectionDate').append(opt);
+        }
+
         //Function to find and capture only Unique Arrays
         function onlyUnique(value, index, self) { 
             return self.indexOf(value) === index;
@@ -40,6 +56,12 @@
 
           //When user choose the drop down date menu  
           $('#collectionDate').click(function () {
+            console.log("In CollectionDate Change Function");
+
+            //Read Selected Value
+            var selectedDate = $('#collectionDate').val();
+            console.log(selectedDate);
+            $('#waypoints').empty();
             var params = {
                 TableName: 'booking',
                 FilterExpression: '#collectionDate = :collectionDateVal',
@@ -47,7 +69,7 @@
                    "#collectionDate": "collectionDate"
                 },
                 ExpressionAttributeValues: {
-                    ":collectionDateVal": {"S":"2017-08-22"}
+                    ":collectionDateVal": {"S":selectedDate}
                 }
               
             };
@@ -149,8 +171,7 @@
     <div>
     <b>CollectionDate:</b>
     <select id="collectionDate">
-      <option value="2017-08-15">15 August 2017</option>
-      <option value="2017-08-22">22 August 2017</option>
+      
     </select>
     </div>
     <div>
